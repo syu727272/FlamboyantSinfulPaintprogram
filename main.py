@@ -3,6 +3,58 @@ import os
 from datetime import datetime, timedelta
 
 import streamlit as st
+import requests
+
+# --- API Key Setup ---
+# Replace with your actual API key from Replit Secrets
+xai_api_key = os.environ.get("XAI_API_KEY")
+
+def get_events(start_date, end_date, event_type):
+    url = "https://api.x.ai/v1/chat/completions"  # Replace with actual API endpoint if different
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {xai_api_key}"
+    }
+    data = {
+        "messages": [
+            {
+                "role": "system",
+                "content": "You are an event information assistant. Provide event details including name, date, location, description and URL."
+            },
+            {
+                "role": "user",
+                "content": f"Find events in Tokyo between {start_date.strftime('%Y-%m-%d')} and {end_date.strftime('%Y-%m-%d')}.  Include event type if available from {event_type}."
+            }
+        ],
+        "model": "grok-2-latest",
+        "stream": False,
+        "temperature": 0
+    }
+
+    try:
+        response = requests.post(url, headers=headers, data=json.dumps(data))
+        response.raise_for_status()  # Raise HTTPError for bad responses (4xx or 5xx)
+        response_json = response.json()
+        # Adapt this section to the actual structure of the X.AI API response
+        # This is a placeholder for how you'd likely need to parse the API response
+        #  The response structure needs to be carefully examined and parsed
+        #  This example assumes a simple structure, which is unlikely to be the case.
+        events = []
+        # Example:  Assuming the API response contains a list of events with the specified keys
+        # for event in response_json.get("choices", [])[0].get("message", {}).get("content",[]):
+        #     try:
+        #         event_details = json.loads(event)
+        #         events.append(event_details)
+        #     except json.JSONDecodeError:
+        #         print(f"Error decoding event data: {event}")
+        return events
+    except requests.exceptions.RequestException as e:
+        print(f"An error occurred: {e}")
+        return []
+    except (KeyError, IndexError) as e:
+        print(f"Error parsing API response: {e}")
+        return []
+
 
 # --- Page Configuration ---
 st.set_page_config(page_title="東京イベント情報", layout="wide")
@@ -58,24 +110,18 @@ event_type = st.sidebar.multiselect(
 # --- Main Interface ---
 st.title("東京イベント情報")
 
-# Placeholder for event data - replace with actual data fetching logic later
-event_data = [
-    {"イベント名": "イベントA", "日時": "2024-03-08", "場所": "東京ドーム", "説明": "これはイベントAの説明です。", "URL": "https://example.com/eventA"},
-    {"イベント名": "イベントB", "日時": "2024-03-15", "場所": "渋谷", "説明": "これはイベントBの説明です。", "URL": "https://example.com/eventB"},
-    {"イベント名": "イベントC", "日時": "2024-03-22", "場所": "新宿", "説明": "これはイベントCの説明です。", "URL": "https://example.com/eventC"},
-
-]
-
+# Fetch event data from X.AI API
+event_data = get_events(start_date, end_date, event_type)
 
 # Display events
 if event_data:
     if isinstance(event_data, list):
         # Display as cards in a grid
         st.subheader(f"イベント一覧 ({len(event_data)}件)")
-        
+
         # Create tabs for different view modes
         tab1, tab2 = st.tabs(["カード表示", "テーブル表示"])
-        
+
         with tab1:
             # Create rows with 3 columns each for event cards
             events = event_data
@@ -89,7 +135,7 @@ if event_data:
                                 st.markdown(f"### {event.get('イベント名', 'イベント名不明')}")
                                 st.markdown(f"**日時**: {event.get('日時', '不明')}")
                                 st.markdown(f"**場所**: {event.get('場所', '不明')}")
-                                
+
                                 # Show description with a "もっと見る" expander if it's long
                                 description = event.get('説明', '')
                                 if len(description) > 100:
@@ -98,12 +144,12 @@ if event_data:
                                         st.markdown(description)
                                 else:
                                     st.markdown(description if description else "説明なし")
-                                
+
                                 # If URL exists, add a link button
                                 url = event.get('URL', '')
                                 if url and url != "N/A":
                                     st.markdown(f"[イベントサイトへ]({url})", unsafe_allow_html=True)
-        
+
         with tab2:
             # Convert to a more table-friendly format
             table_data = []
@@ -115,7 +161,7 @@ if event_data:
                     "URL": event.get("URL", "")
                 })
             st.dataframe(table_data, use_container_width=True)
-            
+
     elif isinstance(event_data, dict) and "raw_content" in event_data:
         # Display raw content from API
         st.subheader("APIからのレスポンス:")
