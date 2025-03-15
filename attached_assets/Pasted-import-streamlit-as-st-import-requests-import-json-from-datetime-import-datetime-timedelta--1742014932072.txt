@@ -1,0 +1,65 @@
+import streamlit as st
+import requests
+import json
+from datetime import datetime, timedelta
+
+# --- GROK API 設定 (仮) ---
+API_KEY = "YOUR_GROK_API_KEY"  # ここにAPIキーを入力
+ENDPOINT = "https://console.x.ai/api/events"  # 仮のエンドポイント。GROK APIのドキュメントを参照して正しいものに置き換えてください。
+
+# --- 期間指定 ---
+st.sidebar.header("期間指定")
+today = datetime.now()
+start_date = st.sidebar.date_input("開始日", today)
+end_date = st.sidebar.date_input("終了日", today + timedelta(days=30))  # デフォルトは30日後
+
+# 最大期間制限 (例: 1ヶ月)
+if (end_date - start_date).days > 30:  # 必要に応じて最大6ヶ月などに変更
+    st.sidebar.error("期間は最大30日まで指定可能です。")
+    end_date = start_date + timedelta(days=30)
+
+
+# --- API リクエスト関数 ---
+def get_events(start_date, end_date):
+    headers = {
+        "Authorization": f"Bearer {API_KEY}"  # APIキーが必要な場合
+    }
+    params = {
+        "q": "イベント 東京",  # キーワード (GROK APIの仕様に合わせて変更)
+        "location": "東京", # 場所
+        "start_date": start_date.strftime("%Y-%m-%d"),
+        "end_date": end_date.strftime("%Y-%m-%d"),
+        # 他のパラメータがあれば追加 (GROK APIの仕様に合わせて)
+        "limit": 30, #最大３０件
+    }
+
+    try:
+        response = requests.get(ENDPOINT, headers=headers, params=params)
+        response.raise_for_status()  # ステータスコードが200以外ならエラー
+        return response.json()
+    except requests.exceptions.RequestException as e:
+        st.error(f"APIリクエストエラー: {e}")
+        return None
+
+
+
+# --- メイン処理 ---
+st.title("東京イベント情報")
+
+event_data = get_events(start_date, end_date)
+
+if event_data:
+    events = []
+    #  GROK APIのレスポンス形式に合わせて、必要な情報を抽出
+    for item in event_data.get("events", [])[:30]:  # "events"キーが存在すると仮定。　最大30件
+        event = {
+            "イベント名": item.get("title", "N/A"),  # "title"キーが存在すると仮定
+            "日時": item.get("start_time", "N/A"), # "start_time"キーが存在すると仮定
+            "場所": item.get("venue", {}).get("name", "N/A"), #ネストされた辞書から取得する例
+            "説明": item.get("description", "N/A"), # "description" キーが存在すると仮定。
+            "URL": item.get("url", "N/A") # "url" キーが存在すると仮定。
+        }
+        events.append(event)
+
+    st.write(events)  # 辞書形式で表示
+    # st.dataframe(events)  # データフレーム形式で表示 (必要に応じて)
