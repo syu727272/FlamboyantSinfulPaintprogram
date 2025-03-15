@@ -108,21 +108,20 @@ def get_events(start_date, end_date, event_types=None, limit=30):
             response_content = completion.choices[0].message.content
             
             # Try to extract JSON from the response
-                try:
-                    # Look for JSON in the response
-                    import re
-                    json_match = re.search(r'\[.*\]|\{.*\}', content, re.DOTALL)
-                    if json_match:
-                        events_data = json.loads(json_match.group())
-                        return events_data
-                    else:
-                        # If no JSON found, return the raw content
-                        st.warning("構造化されたデータが見つかりませんでした。生のレスポンスを表示します。")
-                        return {"raw_content": content}
-                except json.JSONDecodeError:
-                    st.warning("JSON解析エラー。生のレスポンスを表示します。")
-                    return {"raw_content": content}
-            return None
+            try:
+                # Look for JSON in the response
+                import re
+                json_match = re.search(r'\[.*\]|\{.*\}', response_content, re.DOTALL)
+                if json_match:
+                    events_data = json.loads(json_match.group())
+                    return events_data
+                else:
+                    # If no JSON found, return the raw content
+                    st.warning("構造化されたデータが見つかりませんでした。生のレスポンスを表示します。")
+                    return {"raw_content": response_content}
+            except json.JSONDecodeError:
+                st.warning("JSON解析エラー。生のレスポンスを表示します。")
+                return {"raw_content": response_content}
     except requests.exceptions.RequestException as e:
         st.error(f"APIリクエストエラー: {e}")
         return None
