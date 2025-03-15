@@ -25,7 +25,7 @@ def get_api_key():
 
 # --- GROK API Configuration ---
 API_KEY = get_api_key()
-ENDPOINT = "https://console.x.ai/api/v1/chat/completions"  # Update this based on actual GROK API documentation
+ENDPOINT = "https://api.groq.com/openai/v1/chat/completions"  # GROQ API endpoint
 
 # --- Date Range Selection ---
 st.sidebar.header("期間指定")
