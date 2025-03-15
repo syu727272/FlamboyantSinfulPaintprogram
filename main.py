@@ -85,7 +85,7 @@ if event_data:
                     if i+j < len(events):
                         event = events[i+j]
                         with cols[j]:
-                            with st.container(border=True):
+                            with st.container():
                                 st.markdown(f"### {event.get('イベント名', 'イベント名不明')}")
                                 st.markdown(f"**日時**: {event.get('日時', '不明')}")
                                 st.markdown(f"**場所**: {event.get('場所', '不明')}")
