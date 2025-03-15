@@ -81,10 +81,7 @@ def get_events(start_date, end_date, event_types=None, limit=30):
         st.error("APIキーが設定されていません。サイドバーでAPIキーを入力してください。")
         return None
     
-    headers = {
-        "Authorization": f"Bearer {API_KEY}",
-        "Content-Type": "application/json"
-    }
+    from openai import OpenAI
     
     # Prepare query for GROK API
     event_type_query = ""
@@ -93,25 +90,24 @@ def get_events(start_date, end_date, event_types=None, limit=30):
     
     query = f"東京で{start_date.strftime('%Y年%m月%d日')}から{end_date.strftime('%Y年%m月%d日')}までに開催されるイベント{event_type_query}を{limit}件リストアップして、各イベントの名前、日時、場所、説明、URLを含む辞書形式で返してください。"
     
-    payload = {
-        "messages": [
-            {"role": "system", "content": "あなたはイベント情報を提供する専門AIアシスタントです。"},
-            {"role": "user", "content": query}
-        ],
-        "model": "grok-1",
-        "max_tokens": 4000
-    }
+    client = OpenAI(
+        api_key=API_KEY,
+        base_url="https://api.groq.com/openai/v1"
+    )
     
     try:
         with st.spinner("イベント情報を取得中..."):
-            response = requests.post(ENDPOINT, headers=headers, json=payload)
-            response.raise_for_status()
+            completion = client.chat.completions.create(
+                model="grok-2-latest",
+                messages=[
+                    {"role": "system", "content": "あなたはイベント情報を提供する専門AIアシスタントです。"},
+                    {"role": "user", "content": query}
+                ],
+                max_tokens=4000
+            )
+            response_content = completion.choices[0].message.content
             
-            result = response.json()
-            # Parse the assistant's message from GROK API response
-            if "choices" in result and len(result["choices"]) > 0:
-                content = result["choices"][0]["message"]["content"]
-                # Try to extract JSON from the response
+            # Try to extract JSON from the response
                 try:
                     # Look for JSON in the response
                     import re
