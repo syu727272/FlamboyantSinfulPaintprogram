@@ -1,31 +1,11 @@
-import streamlit as st
-import requests
 import json
-from datetime import datetime, timedelta
 import os
+from datetime import datetime, timedelta
+
+import streamlit as st
 
 # --- Page Configuration ---
 st.set_page_config(page_title="東京イベント情報", layout="wide")
-
-# --- API Key Management ---
-def get_api_key():
-    # Try to get from environment variable first
-    api_key = os.environ.get("XAI_API_KEY", "")
-    
-    # If not found in environment, check session state or prompt user
-    if not api_key:
-        if "api_key" in st.session_state:
-            api_key = st.session_state.api_key
-        else:
-            api_key = st.sidebar.text_input("GROK API Key", type="password")
-            if api_key:
-                st.session_state.api_key = api_key
-    
-    return api_key
-
-# --- GROK API Configuration ---
-API_KEY = get_api_key()
-ENDPOINT = "https://api.groq.com/openai/v1/chat/completions"  # GROQ API endpoint
 
 # --- Date Range Selection ---
 st.sidebar.header("期間指定")
@@ -75,82 +55,17 @@ event_type = st.sidebar.multiselect(
     default=["すべて"]
 )
 
-# --- API Request Function ---
-def get_events(start_date, end_date, event_types=None, limit=30):
-    if not API_KEY:
-        st.error("APIキーが設定されていません。サイドバーでAPIキーを入力してください。")
-        return None
-    
-    from openai import OpenAI
-    
-    # Prepare query for GROK API
-    event_type_query = ""
-    if event_types and "すべて" not in event_types:
-        event_type_query = " " + " ".join(event_types)
-    
-    query = f"東京で{start_date.strftime('%Y年%m月%d日')}から{end_date.strftime('%Y年%m月%d日')}までに開催されるイベント{event_type_query}を{limit}件リストアップして、各イベントの名前、日時、場所、説明、URLを含む辞書形式で返してください。"
-    
-    client = OpenAI(
-        api_key=API_KEY,
-        base_url="https://api.groq.com/openai/v1"
-    )
-    
-    try:
-        with st.spinner("イベント情報を取得中..."):
-            completion = client.chat.completions.create(
-                model="grok-2-latest",
-                messages=[
-                    {"role": "system", "content": "あなたはイベント情報を提供する専門AIアシスタントです。"},
-                    {"role": "user", "content": query}
-                ],
-                max_tokens=4000
-            )
-            response_content = completion.choices[0].message.content
-            
-            # Try to extract JSON from the response
-            try:
-                # Look for JSON in the response
-                import re
-                json_match = re.search(r'\[.*\]|\{.*\}', response_content, re.DOTALL)
-                if json_match:
-                    events_data = json.loads(json_match.group())
-                    return events_data
-                else:
-                    # If no JSON found, return the raw content
-                    st.warning("構造化されたデータが見つかりませんでした。生のレスポンスを表示します。")
-                    return {"raw_content": response_content}
-            except json.JSONDecodeError:
-                st.warning("JSON解析エラー。生のレスポンスを表示します。")
-                return {"raw_content": response_content}
-    except requests.exceptions.RequestException as e:
-        st.error(f"APIリクエストエラー: {e}")
-        return None
-
 # --- Main Interface ---
 st.title("東京イベント情報")
-st.write("GROK APIを使用して東京で開催されるイベント情報を表示します")
 
-col1, col2 = st.columns([1, 4])
-with col1:
-    fetch_btn = st.button("イベント情報を取得", use_container_width=True)
-    
-    limit = st.number_input("表示件数", min_value=5, max_value=100, value=30, step=5)
+# Placeholder for event data - replace with actual data fetching logic later
+event_data = [
+    {"イベント名": "イベントA", "日時": "2024-03-08", "場所": "東京ドーム", "説明": "これはイベントAの説明です。", "URL": "https://example.com/eventA"},
+    {"イベント名": "イベントB", "日時": "2024-03-15", "場所": "渋谷", "説明": "これはイベントBの説明です。", "URL": "https://example.com/eventB"},
+    {"イベント名": "イベントC", "日時": "2024-03-22", "場所": "新宿", "説明": "これはイベントCの説明です。", "URL": "https://example.com/eventC"},
 
-# Fetch events when button is clicked
-if fetch_btn:
-    event_data = get_events(
-        start_date, 
-        end_date, 
-        event_types=event_type if "すべて" not in event_type else None,
-        limit=limit
-    )
-    
-    # Store in session state for persistence
-    st.session_state.event_data = event_data
-elif "event_data" in st.session_state:
-    event_data = st.session_state.event_data
-else:
-    event_data = None
+]
+
 
 # Display events
 if event_data:
@@ -209,11 +124,8 @@ if event_data:
         # Fallback display
         st.json(event_data)
 else:
-    if fetch_btn:
-        st.info("イベント情報が取得できませんでした。検索条件を変更するか、APIキーをご確認ください。")
-    else:
-        st.info("「イベント情報を取得」ボタンをクリックしてイベントを検索してください。")
+    st.info("イベント情報がまだありません。")
 
 # --- Footer ---
 st.markdown("---")
-st.caption("GROK API を利用した東京イベント情報アプリケーション")
+st.caption("東京イベント情報アプリケーション")
